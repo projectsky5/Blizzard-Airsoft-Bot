@@ -13,4 +13,6 @@ public interface GearService {
     void toggleGearStatus(Long userId, Long gearId);
 
     Gear getGearById(Long gearId);
+    
+    boolean isFullyEquipped(Long telegramId);
 }

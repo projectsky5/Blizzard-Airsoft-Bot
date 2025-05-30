@@ -56,6 +56,12 @@ public class GearServiceImpl implements GearService {
     }
 
     @Override
+    public boolean isFullyEquipped(Long telegramId) {
+        List<Gear> gears = gearRepository.findAllByUserTelegramId(telegramId);
+        return !gears.isEmpty() && gears.stream().allMatch(Gear::isReady);
+    }
+
+    @Override
     public List<Gear> getUserGears(Long telegramId) {
         List<Gear> gears = gearRepository.findAllByUserTelegramId(telegramId);
         gears.sort(Comparator.comparing(Gear::getItemName));

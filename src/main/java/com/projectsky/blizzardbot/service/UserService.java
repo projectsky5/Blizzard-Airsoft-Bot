@@ -5,6 +5,7 @@ import com.projectsky.blizzardbot.model.User;
 import com.projectsky.blizzardbot.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -42,5 +43,21 @@ public class UserService {
 
         user.setRole(Role.COMMANDER);
         userRepository.save(user);
+    }
+
+    public List<User> getAllVisibleUsers(){
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() != Role.ADMIN)
+                .toList();
+    }
+
+    public boolean isCommander(Long telegramId) {
+        return findById(telegramId)
+                .map(user -> user.getRole() == Role.COMMANDER)
+                .orElse(false);
+    }
+
+    public Optional<User> findByCallName(String callName) {
+        return userRepository.findByCallName(callName);
     }
 }
