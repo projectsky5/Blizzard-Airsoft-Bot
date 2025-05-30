@@ -1,6 +1,10 @@
 package com.projectsky.blizzardbot.bot;
 
 import com.projectsky.blizzardbot.configuration.BotProperties;
+import com.projectsky.blizzardbot.enums.UserState;
+import com.projectsky.blizzardbot.exception.GearAlreadyExistsException;
+import com.projectsky.blizzardbot.model.Gear;
+import com.projectsky.blizzardbot.service.GearService;
 import com.projectsky.blizzardbot.service.UserService;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
@@ -8,23 +12,31 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
     private final TelegramClient telegramClient;
     private final UserService userService;
+    private final GearService gearService;
 
     private final Set<Long> awaitingCallNames = new HashSet<>();
+    private final Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
     public UpdateConsumer(BotProperties botProperties,
-                          UserService userService) {
+                          UserService userService,
+                          GearService gearService) {
         this.telegramClient = new OkHttpTelegramClient(botProperties.getToken());
         this.userService = userService;
+        this.gearService = gearService;
     }
 
     @Override
@@ -38,8 +50,9 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
             if("/start".equals(message)) {
                 if(isRegistered) {
-                    sendMessage(chatId, "Добро пожаловать %s!"
-                                    .formatted(userService.findById(userId).get().getCallName())
+                    sendMessageWithKeyboard(chatId, "Добро пожаловать %s!"
+                                    .formatted(userService.findById(userId).get().getCallName()),
+                            buildReplyKeyboard()
                             );
                 } else{
                     awaitingCallNames.add(userId);
@@ -47,12 +60,32 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                         Привет! Введи свой позывной, чтобы начать работу.
                         """);
                 }
-            }else if(!isRegistered && awaitingCallNames.contains(chatId)) {
+            } else if(!isRegistered && awaitingCallNames.contains(chatId)) {
                 userService.createUser(userId, message);
                 awaitingCallNames.remove(chatId);
-                sendMessage(chatId, "Позывной '%s' сохранен! Добро пожаловать.".formatted(message));
-                return;
-            } else if(message.startsWith("/set_commander")) {
+                sendMessageWithKeyboard(chatId, "Позывной '%s' сохранен! Добро пожаловать.".formatted(message),
+                        buildReplyKeyboard());
+
+            } else if ("/add_gear".equalsIgnoreCase(message) || "Добавить предмет".equalsIgnoreCase(message)) {
+                userStates.put(userId, UserState.ADDING_GEAR);
+                sendMessage(chatId, "Введите название предмета");
+
+            } else if(userStates.getOrDefault(userId, UserState.NONE) == UserState.ADDING_GEAR) {
+                try {
+                    gearService.addGear(userId, message);
+                } catch (GearAlreadyExistsException e) {
+                    sendMessage(chatId, "Данный элемент снаряжения уже добавлен!");
+                    userStates.put(userId, UserState.NONE);
+                    return;
+                }
+                userStates.put(userId, UserState.NONE);
+                sendMessage(chatId, "Предмет '%s' успешно добавлен.".formatted(message));
+
+            } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
+                List<Gear> userGears = gearService.getUserGears(userId);
+                sendMessage(chatId, buildGearList(userGears));
+            }
+            else if(message.startsWith("/set_commander")) {
                 if (!userService.isAdmin(userId)) {
                     sendMessage(chatId, "У тебя нет прав для назначения командира.");
                     return;
@@ -82,5 +115,39 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 .build();
 
         telegramClient.execute(message);
+    }
+
+    private ReplyKeyboardMarkup buildReplyKeyboard(){
+        KeyboardButton addItem = new KeyboardButton("Добавить предмет");
+        KeyboardButton checkItems = new KeyboardButton("Мое снаряжение");
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(addItem);
+        row.add(checkItems);
+
+        List<KeyboardRow> keyboard = List.of(row);
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(false)
+                .build();
+    }
+
+    @SneakyThrows
+    private void sendMessageWithKeyboard(Long chatId, String text, ReplyKeyboardMarkup keyboard){
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .build();
+
+        telegramClient.execute(message);
+    }
+
+    private String buildGearList(List<Gear> gears){
+        return gears.stream()
+                .map(Gear::getItemName)
+                .collect(Collectors.joining("\n"));
     }
 }
