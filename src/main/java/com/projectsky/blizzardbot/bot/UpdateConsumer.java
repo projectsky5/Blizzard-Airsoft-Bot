@@ -11,15 +11,20 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Component
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
@@ -82,10 +87,21 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 sendMessage(chatId, "Предмет '%s' успешно добавлен.".formatted(message));
 
             } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
-                List<Gear> userGears = gearService.getUserGears(userId);
-                sendMessage(chatId, buildGearList(userGears));
-            }
-            else if(message.startsWith("/set_commander")) {
+
+                InlineKeyboardMarkup markup = buildMarkup(userId);
+
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Список вашего снаряжения:")
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+            } else if(message.startsWith("/set_commander")) {
                 if (!userService.isAdmin(userId)) {
                     sendMessage(chatId, "У тебя нет прав для назначения командира.");
                     return;
@@ -103,6 +119,32 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 sendMessage(chatId, "Пользователь @" + callName + " назначен командиром.");
             } else {
                 sendMessage(chatId, "Команда не распознана");
+            }
+        }
+        if (update.hasCallbackQuery()){
+            CallbackQuery callbackQuery = update.getCallbackQuery();
+            String data = callbackQuery.getData();
+            Long userId = callbackQuery.getFrom().getId();
+            Long chatId = callbackQuery.getMessage().getChatId();
+            Integer messageId = callbackQuery.getMessage().getMessageId();
+
+            if (data.startsWith("toggle_gear_")){
+                Long gearId = Long.parseLong(data.replace("toggle_gear_", ""));
+                gearService.toggleGearStatus(userId, gearId);
+
+                InlineKeyboardMarkup markup = buildMarkup(userId);
+
+                EditMessageReplyMarkup editMarkup = EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
+                        .messageId(messageId)
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(editMarkup);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
@@ -145,9 +187,32 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
         telegramClient.execute(message);
     }
 
-    private String buildGearList(List<Gear> gears){
-        return gears.stream()
-                .map(Gear::getItemName)
-                .collect(Collectors.joining("\n"));
+    private InlineKeyboardMarkup buildMarkup(Long userId){
+        List<Gear> userGears = gearService.getUserGears(userId);
+
+        List<InlineKeyboardRow> buttonRows = new ArrayList<>();
+        InlineKeyboardRow currentRow = new InlineKeyboardRow();
+
+        for (int i = 0; i < userGears.size(); i++) {
+            Gear gear = userGears.get(i);
+
+            String text = "%s %s".formatted(gear.getItemName(), gear.isReady() ? "✅" : "❌");
+            String callbackData = "toggle_gear_" + gear.getId();
+
+            InlineKeyboardButton toggleButton = InlineKeyboardButton.builder()
+                    .text(text)
+                    .callbackData(callbackData)
+                    .build();
+
+            currentRow.add(toggleButton);
+
+            if(currentRow.size() == 2 || i == userGears.size() - 1) {
+                buttonRows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
+        }
+        return InlineKeyboardMarkup.builder()
+                .keyboard(buttonRows)
+                .build();
     }
 }

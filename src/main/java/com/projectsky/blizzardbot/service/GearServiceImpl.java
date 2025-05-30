@@ -6,8 +6,8 @@ import com.projectsky.blizzardbot.model.User;
 import com.projectsky.blizzardbot.repository.GearRepository;
 import com.projectsky.blizzardbot.repository.UserRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -39,7 +39,26 @@ public class GearServiceImpl implements GearService {
     }
 
     @Override
+    public void toggleGearStatus(Long userId, Long gearId) {
+        Gear gear = gearRepository.findById(gearId)
+                .orElseThrow(() -> new RuntimeException("Gear not found"));
+        if (!gear.getUser().getTelegramId().equals(userId)) {
+            throw new RuntimeException("User not in telegram");
+        }
+        gear.setReady(!gear.isReady());
+        gearRepository.save(gear);
+    }
+
+    @Override
+    public Gear getGearById(Long gearId) {
+        return gearRepository.findById(gearId)
+                .orElseThrow(() -> new RuntimeException("Gear not found"));
+    }
+
+    @Override
     public List<Gear> getUserGears(Long telegramId) {
-        return gearRepository.findAllByUserTelegramId(telegramId);
+        List<Gear> gears = gearRepository.findAllByUserTelegramId(telegramId);
+        gears.sort(Comparator.comparing(Gear::getItemName));
+        return gears;
     }
 }
