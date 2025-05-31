@@ -3,8 +3,11 @@ package com.projectsky.blizzardbot.service;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Service
@@ -17,7 +20,28 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    @SneakyThrows
+    public void sendMessageWithInlineKeyboard(Long chatId, String text, InlineKeyboardMarkup keyboard){
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .build();
+
+        executeMessage(message);
+    }
+
+    @Override
+    public void sendMessageWithEditKeyboard(Long chatId, Integer messageId, InlineKeyboardMarkup keyboard){
+        EditMessageReplyMarkup editMarkup = EditMessageReplyMarkup.builder()
+                .chatId(chatId)
+                .messageId(messageId)
+                .replyMarkup(keyboard)
+                .build();
+
+        executeEditMessage(editMarkup);
+    }
+
+    @Override
     public void sendMessageWithKeyboard(Long chatId, String text, ReplyKeyboardMarkup keyboard) {
         SendMessage message = SendMessage.builder()
                 .chatId(chatId)
@@ -25,11 +49,10 @@ public class MessageServiceImpl implements MessageService {
                 .replyMarkup(keyboard)
                 .build();
 
-        telegramClient.execute(message);
+        executeMessage(message);
     }
 
     @Override
-    @SneakyThrows
     public void sendMessageHideKeyboard(Long chatId, String text) {
         SendMessage message = SendMessage.builder()
                 .chatId(chatId)
@@ -37,22 +60,10 @@ public class MessageServiceImpl implements MessageService {
                 .replyMarkup(new ReplyKeyboardRemove(true))
                 .build();
 
-        telegramClient.execute(message);
+        executeMessage(message);
     }
 
     @Override
-    @SneakyThrows
-    public void sendMessage(Long chatId, String messageText) {
-        SendMessage message = SendMessage.builder()
-                .text(messageText)
-                .chatId(chatId)
-                .build();
-
-        telegramClient.execute(message);
-    }
-
-    @Override
-    @SneakyThrows
     public void sendMessageWithCancelKeyboard(Long chatId, String text, ReplyKeyboardMarkup keyboard) {
         SendMessage message = SendMessage.builder()
                 .chatId(chatId)
@@ -60,6 +71,22 @@ public class MessageServiceImpl implements MessageService {
                 .replyMarkup(keyboard)
                 .build();
 
-        telegramClient.execute(message);
+        executeMessage(message);
+    }
+
+    private void executeMessage(SendMessage msg){
+        try {
+            telegramClient.execute(msg);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private void executeEditMessage(EditMessageReplyMarkup markup){
+        try {
+            telegramClient.execute(markup);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }

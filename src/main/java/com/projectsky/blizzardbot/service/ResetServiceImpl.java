@@ -10,10 +10,10 @@ import java.util.List;
 @Service
 public class ResetServiceImpl implements ResetService {
 
-    private final UserService userService;
+    private final UserServiceImpl userService;
     private final GearService gearService;
 
-    public ResetServiceImpl(UserService userService, GearService gearService) {
+    public ResetServiceImpl(UserServiceImpl userService, GearService gearService) {
         this.userService = userService;
         this.gearService = gearService;
     }

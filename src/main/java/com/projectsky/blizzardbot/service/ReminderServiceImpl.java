@@ -16,13 +16,13 @@ import java.util.concurrent.ExecutorService;
 public class ReminderServiceImpl implements ReminderService {
 
     private final ExecutorService executor;
-    private final UserService userService;
+    private final UserServiceImpl userService;
     private final TelegramClient telegramClient;
     private final MarkupService markupService;
 
     public ReminderServiceImpl(
             @Qualifier("reminderExecutor") ExecutorService executor,
-            UserService userService,
+            UserServiceImpl userService,
             TelegramClient telegramClient, MarkupService markupService) {
         this.executor = executor;
         this.userService = userService;

@@ -1,6 +1,7 @@
 package com.projectsky.blizzardbot.service;
 
 import com.projectsky.blizzardbot.exception.GearAlreadyExistsException;
+import com.projectsky.blizzardbot.exception.UserNotFoundException;
 import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.model.User;
 import com.projectsky.blizzardbot.repository.GearRepository;
@@ -23,9 +24,10 @@ public class GearServiceImpl implements GearService {
     }
 
     @Override
+    @Transactional
     public void addGear(Long telegramId, String itemName) throws GearAlreadyExistsException {
         User user = userRepository.findById(telegramId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (gearRepository.existsByUserTelegramIdAndItemName(telegramId, itemName)) {
             throw new GearAlreadyExistsException("Gear already exists");

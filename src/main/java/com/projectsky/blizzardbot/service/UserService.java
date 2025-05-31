@@ -1,82 +1,28 @@
 package com.projectsky.blizzardbot.service;
 
-import com.projectsky.blizzardbot.enums.Role;
-import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.model.User;
-import com.projectsky.blizzardbot.repository.UserRepository;
-import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-@Service
-public class UserService {
+public interface UserService {
+    @Transactional
+    User createUser(Long telegramId, String callName);
 
-    private final UserRepository userRepository;
+    boolean isAdmin(Long telegramId);
 
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+    void promoteToCommander(String callName);
 
-    public Optional<User> findById(Long telegramId){
-        return userRepository.findById(telegramId);
-    }
+    List<User> getAllVisibleUsers();
 
-    public User createUser(Long telegramId, String callName){
-        User user = new User();
-        user.setTelegramId(telegramId);
-        user.setCallName(callName);
-        user.setRole(Role.USER);
-        return userRepository.save(user);
-    }
+    boolean isCommander(Long telegramId);
 
-    public boolean isAdmin(Long telegramId){
-        return findById(telegramId)
-                .map(user -> user.getRole() == Role.ADMIN)
-                .orElse(false);
-    }
+    Optional<User> findByCallName(String callName);
 
-    public void promoteToCommander(String callName){
-        User user = userRepository.findAll().stream()
-                .filter(u -> u.getCallName().equalsIgnoreCase(callName))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    boolean isAccCharged(Long telegramId);
 
-        user.setRole(Role.COMMANDER);
-        userRepository.save(user);
-    }
+    void toggleChargeStatus(Long userId);
 
-    public List<User> getAllVisibleUsers(){
-        return userRepository.findAll().stream()
-                .filter(u -> u.getRole() != Role.ADMIN)
-                .toList();
-    }
-
-    public boolean isCommander(Long telegramId) {
-        return findById(telegramId)
-                .map(user -> user.getRole() == Role.COMMANDER)
-                .orElse(false);
-    }
-
-    public Optional<User> findByCallName(String callName) {
-        return userRepository.findByCallName(callName);
-    }
-
-    public boolean isAccCharged(Long telegramId) {
-        return userRepository.findById(telegramId)
-                .map(User::isAccumulatorCharged)
-                .orElse(false);
-    }
-
-    public void toggleChargeStatus(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setAccumulatorCharged(!user.isAccumulatorCharged());
-        userRepository.save(user);
-    }
-
-    public void saveAll(List<User> users) {
-        userRepository.saveAll(users);
-    }
+    void saveAll(List<User> users);
 }
