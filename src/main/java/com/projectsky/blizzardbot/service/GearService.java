@@ -11,8 +11,10 @@ public interface GearService {
     void addGear(Long telegramId, String itemName) throws GearAlreadyExistsException;
 
     void toggleGearStatus(Long userId, Long gearId);
-
-    Gear getGearById(Long gearId);
     
     boolean isFullyEquipped(Long telegramId);
+
+    void removeGear(Long telegramId, Long gearId);
+
+    void resetAllGearReadiness();
 }

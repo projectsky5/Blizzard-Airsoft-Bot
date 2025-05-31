@@ -15,6 +15,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageRe
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -79,16 +80,10 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     userStates.put(userId, UserState.NONE);
                     return;
                 }
-                userStates.put(userId, UserState.NONE);
-                messageService.sendMessageWithKeyboard(chatId, "Предмет '%s' успешно добавлен.".formatted(message), markupService.buildReplyKeyboardMarkup(userId));
-
+                userStates.put(userId, UserState.GEAR_MODE);
+                messageService.sendMessageWithKeyboard(chatId, "Предмет '%s' успешно добавлен.".formatted(message), markupService.buildReplyKeyboardGearMode(userId));
             } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
                 List<Gear> userGears = gearService.getUserGears(userId);
-
-                if(userGears.isEmpty()){
-                    messageService.sendMessageWithKeyboard(chatId, "Снаряжение не найдено", markupService.buildReplyKeyboardMarkup(userId));
-                    return;
-                }
 
                 InlineKeyboardMarkup markup = markupService.buildMarkupForGear(userGears, "toggle_gear_");
 
@@ -103,6 +98,49 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }
+
+                ReplyKeyboardMarkup gearKeyboard = markupService.buildReplyKeyboardGearMode(userId);
+                messageService.sendMessageWithKeyboard(chatId, "Выберите действие", gearKeyboard);
+            } else if("Посмотреть снаряжение".equalsIgnoreCase(message)) {
+                List<Gear> userGears = gearService.getUserGears(userId);
+
+                InlineKeyboardMarkup markup = markupService.buildMarkupForGear(userGears, "toggle_gear_");
+
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Список вашего снаряжения:")
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else if ("Удалить предмет".equalsIgnoreCase(message)) {
+                userStates.put(userId, UserState.REMOVING_GEAR);
+
+                List<Gear> userGears = gearService.getUserGears(userId);
+                if(userGears.isEmpty()){
+                    messageService.sendMessage(chatId, "У тебя пока нет снаряжения");
+                    return;
+                }
+
+                InlineKeyboardMarkup markup = markupService.buildMarkupForGearDeletion(userGears, "delete_gear_");
+
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Выбери предмет для удаления:")
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+
             } else if(message.startsWith("/set_commander")) {
                 if (!userService.isAdmin(userId)) {
                     messageService.sendMessage(chatId, "У тебя нет прав для назначения командира.");
@@ -151,6 +189,9 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     throw new RuntimeException(e);
                 }
 
+            } else if ("Назад".equalsIgnoreCase(message)) {
+                userStates.put(userId, UserState.NONE);
+                messageService.sendMessageWithKeyboard(chatId, "Возвращаю на главную", markupService.buildReplyKeyboardMarkup(userId));
             } else if(("/reminder_request".equalsIgnoreCase(message) || "Состояние аккумуляторов".equalsIgnoreCase(message))){
                 if (!userService.isCommander(userId) && !userService.isAdmin(userId)) {
                     messageService.sendMessage(chatId, "Только командир может просматривать состояние аккумуляторов");
@@ -249,6 +290,31 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
                 try {
                     telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if(data.startsWith("delete_gear_")){
+                Long gearId = Long.parseLong(data.replace("delete_gear_", ""));
+                gearService.removeGear(userId, gearId);
+
+                List<Gear> userGears = gearService.getUserGears(userId);
+
+                if(userGears.isEmpty()){
+                    messageService.sendMessage(chatId, "Все предметы удалены");
+                    return;
+                }
+
+                InlineKeyboardMarkup updatedMarkup = markupService.buildMarkupForGearDeletion(userGears, "delete_gear_");
+
+                EditMessageReplyMarkup editMarkup = EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
+                        .messageId(messageId)
+                        .replyMarkup(updatedMarkup)
+                        .build();
+
+                try {
+                    telegramClient.execute(editMarkup);
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }

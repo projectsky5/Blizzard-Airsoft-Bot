@@ -75,4 +75,8 @@ public class UserService {
         user.setAccumulatorCharged(!user.isAccumulatorCharged());
         userRepository.save(user);
     }
+
+    public void saveAll(List<User> users) {
+        userRepository.saveAll(users);
+    }
 }

@@ -112,6 +112,63 @@ public class MarkupServiceImpl implements MarkupService {
     }
 
     @Override
+    public ReplyKeyboardMarkup buildReplyKeyboardGearMode(Long userId) {
+        KeyboardButton back = new KeyboardButton("Назад");
+        KeyboardButton add = new KeyboardButton("Добавить предмет");
+        KeyboardButton remove = new KeyboardButton("Удалить предмет");
+        KeyboardButton gear = new KeyboardButton("Посмотреть снаряжение");
+
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(add);
+        row1.add(remove);
+
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add(back);
+
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add(gear);
+
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(row1);
+        keyboard.add(row2);
+        keyboard.add(row3);
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(false)
+                .build();
+    }
+
+    @Override
+    public InlineKeyboardMarkup buildMarkupForGearDeletion(List<Gear> userGears, String callbackDataType) {
+        List<InlineKeyboardRow> buttonRows = new ArrayList<>();
+        InlineKeyboardRow currentRow = new InlineKeyboardRow();
+
+        for (int i = 0; i < userGears.size(); i++) {
+            Gear gear = userGears.get(i);
+
+            String text = "%s".formatted(gear.getItemName());
+            String callbackData = callbackDataType + gear.getId();
+
+            InlineKeyboardButton deleteButton = InlineKeyboardButton.builder()
+                    .text(text)
+                    .callbackData(callbackData)
+                    .build();
+
+            currentRow.add(deleteButton);
+
+            if(currentRow.size() == 2 || i == userGears.size() - 1) {
+                buttonRows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
+        }
+        return InlineKeyboardMarkup.builder()
+                .keyboard(buttonRows)
+                .build();
+    }
+
+    @Override
     public InlineKeyboardMarkup buildMarkupForAgreement(Long telegramId, String callbackDataType) {
         boolean isCharged = userService.isAccCharged(telegramId);
 
@@ -132,7 +189,7 @@ public class MarkupServiceImpl implements MarkupService {
 
     @Override
     public ReplyKeyboardMarkup buildReplyKeyboardMarkup(Long userId) {
-        KeyboardButton addItem = new KeyboardButton("Добавить предмет");
+//        KeyboardButton addItem = new KeyboardButton("Добавить предмет");
         KeyboardButton checkItems = new KeyboardButton("Мое снаряжение");
         KeyboardButton teamStatus = new KeyboardButton("Сборы команды");
         KeyboardButton chargeStatus = new KeyboardButton("Состояние аккумуляторов");
@@ -141,7 +198,7 @@ public class MarkupServiceImpl implements MarkupService {
 
         if(userService.isCommander(userId) || userService.isAdmin(userId)){
             KeyboardRow row1 = new KeyboardRow();
-            row1.add(addItem);
+//            row1.add(addItem);
             row1.add(checkItems);
             keyboard.add(row1);
 
@@ -151,7 +208,7 @@ public class MarkupServiceImpl implements MarkupService {
             keyboard.add(row2);
         } else {
             KeyboardRow row = new KeyboardRow();
-            row.add(addItem);
+//            row.add(addItem);
             row.add(checkItems);
             keyboard.add(row);
         }
