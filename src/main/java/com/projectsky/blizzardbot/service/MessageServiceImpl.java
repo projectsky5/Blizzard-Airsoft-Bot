@@ -50,4 +50,16 @@ public class MessageServiceImpl implements MessageService {
 
         telegramClient.execute(message);
     }
+
+    @Override
+    @SneakyThrows
+    public void sendMessageWithCancelKeyboard(Long chatId, String text, ReplyKeyboardMarkup keyboard) {
+        SendMessage message = SendMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .build();
+
+        telegramClient.execute(message);
+    }
 }

@@ -137,28 +137,44 @@ public class MarkupServiceImpl implements MarkupService {
         KeyboardButton teamStatus = new KeyboardButton("Сборы команды");
         KeyboardButton chargeStatus = new KeyboardButton("Состояние аккумуляторов");
 
-        KeyboardRow commanderRow = new KeyboardRow();
-        commanderRow.add(addItem);
-        commanderRow.add(checkItems);
-        commanderRow.add(teamStatus);
-        commanderRow.add(chargeStatus);
-
-        KeyboardRow userRow = new KeyboardRow();
-        userRow.add(addItem);
-        userRow.add(checkItems);
-
-        List<KeyboardRow> keyboard;
+        List<KeyboardRow> keyboard = new ArrayList<>();
 
         if(userService.isCommander(userId) || userService.isAdmin(userId)){
-            keyboard = List.of(commanderRow);
+            KeyboardRow row1 = new KeyboardRow();
+            row1.add(addItem);
+            row1.add(checkItems);
+            keyboard.add(row1);
+
+            KeyboardRow row2 = new KeyboardRow();
+            row2.add(teamStatus);
+            row2.add(chargeStatus);
+            keyboard.add(row2);
         } else {
-            keyboard = List.of(userRow);
+            KeyboardRow row = new KeyboardRow();
+            row.add(addItem);
+            row.add(checkItems);
+            keyboard.add(row);
         }
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
                 .resizeKeyboard(true)
                 .oneTimeKeyboard(false)
+                .build();
+    }
+
+    @Override
+    public ReplyKeyboardMarkup buildReplyKeyboardCancelMarkup(Long userId) {
+        KeyboardButton cancel = new KeyboardButton("Назад");
+
+        KeyboardRow row = new KeyboardRow(cancel);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(row);
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(true)
                 .build();
     }
 }

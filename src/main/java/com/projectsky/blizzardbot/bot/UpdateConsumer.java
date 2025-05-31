@@ -55,27 +55,24 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
             if("/start".equals(message)) {
                 if(isRegistered) {
-                    messageService.sendMessageWithKeyboard(chatId, "Добро пожаловать %s!"
-                                    .formatted(userService.findById(userId).get().getCallName()),
-                            markupService.buildReplyKeyboardMarkup(userId));
+                    sendWelcome(chatId, userId);
                 } else{
-                    userStates.put(userId, UserState.ENTERING_CALLNAME);
-                    messageService.sendMessageHideKeyboard(chatId, """
-                        Привет! Введи свой позывной, чтобы начать работу.
-                        """);
+                    sendStartMessage(userId, chatId);
                 }
             } else if(!isRegistered && userStates.getOrDefault(userId, UserState.NONE) == UserState.ENTERING_CALLNAME) {
-                userService.createUser(userId, message);
-                userStates.put(userId, UserState.NONE);
-                messageService.sendMessageWithKeyboard(chatId, "Позывной '%s' сохранен! Добро пожаловать.".formatted(message),
-                        markupService.buildReplyKeyboardMarkup(userId));
+                register(userId, message, chatId);
 
             } else if ("/add_gear".equalsIgnoreCase(message) || "Добавить предмет".equalsIgnoreCase(message)) {
                 userStates.put(userId, UserState.ADDING_GEAR);
-                messageService.sendMessageWithKeyboard(chatId, "Введите название предмета", markupService.buildReplyKeyboardMarkup(userId));
-
+                messageService.sendMessageWithCancelKeyboard(chatId, "Введите название предмета", markupService.buildReplyKeyboardCancelMarkup(userId));
             } else if(userStates.getOrDefault(userId, UserState.NONE) == UserState.ADDING_GEAR) {
                 try {
+                    if("Назад".equals(message)) {
+                        messageService.sendMessageWithKeyboard(chatId, "Добавление отменено", markupService.buildReplyKeyboardMarkup(userId));
+                        userStates.put(userId, UserState.NONE);
+                        return;
+                    }
+
                     gearService.addGear(userId, message);
                 } catch (GearAlreadyExistsException e) {
                     messageService.sendMessage(chatId, "Данный элемент снаряжения уже добавлен!");
@@ -83,7 +80,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     return;
                 }
                 userStates.put(userId, UserState.NONE);
-                messageService.sendMessage(chatId, "Предмет '%s' успешно добавлен.".formatted(message));
+                messageService.sendMessageWithKeyboard(chatId, "Предмет '%s' успешно добавлен.".formatted(message), markupService.buildReplyKeyboardMarkup(userId));
 
             } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
                 List<Gear> userGears = gearService.getUserGears(userId);
@@ -124,7 +121,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
                 User promotedUser = userService.findByCallName(callName)
                                 .orElseThrow(RuntimeException::new);
-                messageService.sendMessage(chatId, "Пользователь @" + callName + " назначен командиром.");
+                messageService.sendMessage(chatId, "Пользователь " + callName + " назначен командиром.");
 
                 messageService.sendMessageWithKeyboard(promotedUser.getTelegramId(), "Ты был назначен командиром.", markupService.buildReplyKeyboardMarkup(userId));
             } else if("/team_status".equalsIgnoreCase(message) || "Сборы команды".equalsIgnoreCase(message)) {
@@ -140,7 +137,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     return;
                 }
 
-                InlineKeyboardMarkup markup = markupService.buildMarkupForUsers(users, "user_status_");
+                InlineKeyboardMarkup markup = markupService.buildMarkupForUsers(users, "show_gear_");
 
                 SendMessage msg = SendMessage.builder()
                         .chatId(chatId)
@@ -228,6 +225,54 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     throw new RuntimeException(e);
                 }
             }
+            if(data.startsWith("show_gear_")){
+                Long targetTelegramId = Long.parseLong(data.replace("show_gear_", ""));
+                List<Gear> userGears = gearService.getUserGears(targetTelegramId);
+
+                if(!userService.isAdmin(userId) && !userService.isCommander(userId)){
+                    messageService.sendMessage(chatId, "Нет прав для просмотра чужого снаряжения");
+                    return;
+                }
+
+                if(userGears.isEmpty()){
+                    messageService.sendMessage(chatId, "Пользователь пока не добавил снаряжение");
+                    return;
+                }
+
+                InlineKeyboardMarkup markup = markupService.buildMarkupForGear(userGears, "toggle_gear_");
+
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Снаряжение пользователя:")
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
+    }
+
+    private void register(Long userId, String message, Long chatId) {
+        userService.createUser(userId, message);
+        userStates.put(userId, UserState.NONE);
+        messageService.sendMessageWithKeyboard(chatId, "Добро пожаловать, %s!".formatted(message),
+                markupService.buildReplyKeyboardMarkup(userId));
+    }
+
+    private void sendStartMessage(Long userId, Long chatId) {
+        userStates.put(userId, UserState.ENTERING_CALLNAME);
+        messageService.sendMessageHideKeyboard(chatId, """
+            Привет! Введи свой позывной, чтобы начать работу.
+            """);
+    }
+
+    private void sendWelcome(Long chatId, Long userId) {
+        messageService.sendMessageWithKeyboard(chatId, "Добро пожаловать %s!"
+                        .formatted(userService.findById(userId).get().getCallName()),
+                markupService.buildReplyKeyboardMarkup(userId));
     }
 }

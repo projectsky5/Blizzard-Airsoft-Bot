@@ -12,8 +12,7 @@ public class ReminderSchedulerImpl implements ReminderScheduler {
     }
 
     @Override
-//    @Scheduled(cron = "0 0 21 * * *", zone = "Europe/Moscow")
-    @Scheduled(fixedDelay = 10000)
+    @Scheduled(cron = "0 0 21 ? * SAT", zone = "Europe/Moscow")
     public void sendToAll() {
         reminderService.sendReminder();
     }

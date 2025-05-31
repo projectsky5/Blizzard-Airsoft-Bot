@@ -12,6 +12,7 @@ public interface MarkupService {
     InlineKeyboardMarkup buildMarkupForGear(List<Gear> userGears, String callbackDataType);
     InlineKeyboardMarkup buildMarkupForUsers(List<User> users, String callbackDataType);
     ReplyKeyboardMarkup buildReplyKeyboardMarkup(Long userId);
+    ReplyKeyboardMarkup buildReplyKeyboardCancelMarkup(Long userId);
     InlineKeyboardMarkup buildMarkupForAgreement(Long telegramId, String callbackDataType);
     InlineKeyboardMarkup buildMarkupForChargedUsers(List<User> users, String callbackDataType);
 }
