@@ -1,27 +1,20 @@
 package com.projectsky.blizzardbot.bot;
 
-import com.projectsky.blizzardbot.configuration.BotProperties;
 import com.projectsky.blizzardbot.enums.UserState;
 import com.projectsky.blizzardbot.exception.GearAlreadyExistsException;
 import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.model.User;
 import com.projectsky.blizzardbot.service.GearService;
+import com.projectsky.blizzardbot.service.MarkupService;
+import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.service.UserService;
-import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -34,15 +27,21 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
     private final UserService userService;
     private final GearService gearService;
+    private final MessageService messageService;
+    private final MarkupService markupService;
 
     private final Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
-    public UpdateConsumer(BotProperties botProperties,
+    public UpdateConsumer(TelegramClient telegramClient,
                           UserService userService,
-                          GearService gearService) {
-        this.telegramClient = new OkHttpTelegramClient(botProperties.getToken());
+                          GearService gearService,
+                          MessageService messageService,
+                          MarkupService markupService) {
+        this.telegramClient = telegramClient;
         this.userService = userService;
         this.gearService = gearService;
+        this.messageService = messageService;
+        this.markupService = markupService;
     }
 
     @Override
@@ -56,45 +55,45 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
             if("/start".equals(message)) {
                 if(isRegistered) {
-                    sendMessageWithKeyboard(chatId, "Добро пожаловать %s!"
+                    messageService.sendMessageWithKeyboard(chatId, "Добро пожаловать %s!"
                                     .formatted(userService.findById(userId).get().getCallName()),
-                            buildReplyKeyboard(userId));
+                            markupService.buildReplyKeyboardMarkup(userId));
                 } else{
                     userStates.put(userId, UserState.ENTERING_CALLNAME);
-                    sendMessageHideKeyboard(chatId, """
+                    messageService.sendMessageHideKeyboard(chatId, """
                         Привет! Введи свой позывной, чтобы начать работу.
                         """);
                 }
             } else if(!isRegistered && userStates.getOrDefault(userId, UserState.NONE) == UserState.ENTERING_CALLNAME) {
                 userService.createUser(userId, message);
                 userStates.put(userId, UserState.NONE);
-                sendMessageWithKeyboard(chatId, "Позывной '%s' сохранен! Добро пожаловать.".formatted(message),
-                        buildReplyKeyboard(userId));
+                messageService.sendMessageWithKeyboard(chatId, "Позывной '%s' сохранен! Добро пожаловать.".formatted(message),
+                        markupService.buildReplyKeyboardMarkup(userId));
 
             } else if ("/add_gear".equalsIgnoreCase(message) || "Добавить предмет".equalsIgnoreCase(message)) {
                 userStates.put(userId, UserState.ADDING_GEAR);
-                sendMessageWithKeyboard(chatId, "Введите название предмета", buildReplyKeyboard(userId));
+                messageService.sendMessageWithKeyboard(chatId, "Введите название предмета", markupService.buildReplyKeyboardMarkup(userId));
 
             } else if(userStates.getOrDefault(userId, UserState.NONE) == UserState.ADDING_GEAR) {
                 try {
                     gearService.addGear(userId, message);
                 } catch (GearAlreadyExistsException e) {
-                    sendMessage(chatId, "Данный элемент снаряжения уже добавлен!");
+                    messageService.sendMessage(chatId, "Данный элемент снаряжения уже добавлен!");
                     userStates.put(userId, UserState.NONE);
                     return;
                 }
                 userStates.put(userId, UserState.NONE);
-                sendMessage(chatId, "Предмет '%s' успешно добавлен.".formatted(message));
+                messageService.sendMessage(chatId, "Предмет '%s' успешно добавлен.".formatted(message));
 
             } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
                 List<Gear> userGears = gearService.getUserGears(userId);
 
                 if(userGears.isEmpty()){
-                    sendMessageWithKeyboard(chatId, "Снаряжение не найдено", buildReplyKeyboard(userId));
+                    messageService.sendMessageWithKeyboard(chatId, "Снаряжение не найдено", markupService.buildReplyKeyboardMarkup(userId));
                     return;
                 }
 
-                InlineKeyboardMarkup markup = buildMarkupForGear(userGears, "toggle_gear_");
+                InlineKeyboardMarkup markup = markupService.buildMarkupForGear(userGears, "toggle_gear_");
 
                 SendMessage msg = SendMessage.builder()
                         .chatId(chatId)
@@ -109,13 +108,13 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 }
             } else if(message.startsWith("/set_commander")) {
                 if (!userService.isAdmin(userId)) {
-                    sendMessage(chatId, "У тебя нет прав для назначения командира.");
+                    messageService.sendMessage(chatId, "У тебя нет прав для назначения командира.");
                     return;
                 }
 
                 String[] parts = message.split(" ");
                 if (parts.length != 2) {
-                    sendMessage(chatId, "Использование: /set_commander @позывной");
+                    messageService.sendMessage(chatId, "Использование: /set_commander @позывной");
                     return;
                 }
 
@@ -125,23 +124,23 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
                 User promotedUser = userService.findByCallName(callName)
                                 .orElseThrow(RuntimeException::new);
-                sendMessage(chatId, "Пользователь @" + callName + " назначен командиром.");
+                messageService.sendMessage(chatId, "Пользователь @" + callName + " назначен командиром.");
 
-                sendMessageWithKeyboard(promotedUser.getTelegramId(), "Ты был назначен командиром.", buildReplyKeyboard(userId));
+                messageService.sendMessageWithKeyboard(promotedUser.getTelegramId(), "Ты был назначен командиром.", markupService.buildReplyKeyboardMarkup(userId));
             } else if("/team_status".equalsIgnoreCase(message) || "Сборы команды".equalsIgnoreCase(message)) {
                 if (!userService.isCommander(userId) && !userService.isAdmin(userId)) {
-                    sendMessage(chatId, "Только командир может просматривать сборы команды");
+                    messageService.sendMessage(chatId, "Только командир может просматривать сборы команды");
                     return;
                 }
 
                 List<User> users = userService.getAllVisibleUsers();
 
                 if(users.isEmpty()){
-                    sendMessage(chatId, "Команда пуста");
+                    messageService.sendMessage(chatId, "Команда пуста");
                     return;
                 }
 
-                InlineKeyboardMarkup markup = buildMarkupForUsers(users, "user_status_");
+                InlineKeyboardMarkup markup = markupService.buildMarkupForUsers(users, "user_status_");
 
                 SendMessage msg = SendMessage.builder()
                         .chatId(chatId)
@@ -155,9 +154,35 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                     throw new RuntimeException(e);
                 }
 
+            } else if(("/reminder_request".equalsIgnoreCase(message) || "Состояние аккумуляторов".equalsIgnoreCase(message))){
+                if (!userService.isCommander(userId) && !userService.isAdmin(userId)) {
+                    messageService.sendMessage(chatId, "Только командир может просматривать состояние аккумуляторов");
+                    return;
+                }
+
+                List<User> users = userService.getAllVisibleUsers();
+
+                if(users.isEmpty()){
+                    messageService.sendMessage(chatId, "Команда пуста");
+                    return;
+                }
+
+                InlineKeyboardMarkup markup = markupService.buildMarkupForChargedUsers(users, "reminder_request_");
+
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Состояние аккумуляторов:")
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(msg);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
             }
             else {
-                sendMessage(chatId, "Команда не распознана");
+                messageService.sendMessage(chatId, "Команда не распознана");
             }
         }
         if (update.hasCallbackQuery()){
@@ -172,7 +197,24 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 gearService.toggleGearStatus(userId, gearId);
 
                 List<Gear> userGears = gearService.getUserGears(userId);
-                InlineKeyboardMarkup markup = buildMarkupForGear(userGears, "toggle_gear_");
+                InlineKeyboardMarkup markup = markupService.buildMarkupForGear(userGears, "toggle_gear_");
+
+                EditMessageReplyMarkup editMarkup = EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
+                        .messageId(messageId)
+                        .replyMarkup(markup)
+                        .build();
+
+                try {
+                    telegramClient.execute(editMarkup);
+                } catch (TelegramApiException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if(data.startsWith("reminder_response_")){
+                Long telegramId = Long.parseLong(data.replace("reminder_response_", ""));
+                userService.toggleChargeStatus(telegramId);
+                InlineKeyboardMarkup markup = markupService.buildMarkupForAgreement(userId, "reminder_response_");
 
                 EditMessageReplyMarkup editMarkup = EditMessageReplyMarkup.builder()
                         .chatId(chatId)
@@ -187,121 +229,5 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 }
             }
         }
-    }
-
-    @SneakyThrows
-    private void sendMessage(Long chatId, String messageText){
-        SendMessage message = SendMessage.builder()
-                .text(messageText)
-                .chatId(chatId)
-                .build();
-
-        telegramClient.execute(message);
-    }
-
-    private ReplyKeyboardMarkup buildReplyKeyboard(Long userId){
-        KeyboardButton addItem = new KeyboardButton("Добавить предмет");
-        KeyboardButton checkItems = new KeyboardButton("Мое снаряжение");
-        KeyboardButton teamStatus = new KeyboardButton("Сборы команды");
-
-        KeyboardRow commanderRow = new KeyboardRow();
-        commanderRow.add(addItem);
-        commanderRow.add(checkItems);
-        commanderRow.add(teamStatus);
-
-        KeyboardRow userRow = new KeyboardRow();
-        userRow.add(addItem);
-        userRow.add(checkItems);
-
-        List<KeyboardRow> keyboard;
-
-        if(userService.isCommander(userId) || userService.isAdmin(userId)){
-            keyboard = List.of(commanderRow);
-        } else {
-            keyboard = List.of(userRow);
-        }
-
-        return ReplyKeyboardMarkup.builder()
-                .keyboard(keyboard)
-                .resizeKeyboard(true)
-                .oneTimeKeyboard(false)
-                .build();
-    }
-
-    @SneakyThrows
-    private void sendMessageWithKeyboard(Long chatId, String text, ReplyKeyboardMarkup keyboard){
-        SendMessage message = SendMessage.builder()
-                .chatId(chatId)
-                .text(text)
-                .replyMarkup(keyboard)
-                .build();
-
-        telegramClient.execute(message);
-    }
-
-    @SneakyThrows
-    private void sendMessageHideKeyboard(Long chatId, String text) {
-        SendMessage message = SendMessage.builder()
-                .chatId(chatId)
-                .text(text)
-                .replyMarkup(new ReplyKeyboardRemove(true))
-                .build();
-
-        telegramClient.execute(message);
-    }
-
-    private InlineKeyboardMarkup buildMarkupForGear(List<Gear> userGears, String callbackDataType){
-        List<InlineKeyboardRow> buttonRows = new ArrayList<>();
-        InlineKeyboardRow currentRow = new InlineKeyboardRow();
-
-        for (int i = 0; i < userGears.size(); i++) {
-            Gear gear = userGears.get(i);
-
-            String text = "%s %s".formatted(gear.getItemName(), gear.isReady() ? "✅" : "❌");
-            String callbackData = callbackDataType + gear.getId();
-
-            InlineKeyboardButton toggleButton = InlineKeyboardButton.builder()
-                    .text(text)
-                    .callbackData(callbackData)
-                    .build();
-
-            currentRow.add(toggleButton);
-
-            if(currentRow.size() == 2 || i == userGears.size() - 1) {
-                buttonRows.add(currentRow);
-                currentRow = new InlineKeyboardRow();
-            }
-        }
-        return InlineKeyboardMarkup.builder()
-                .keyboard(buttonRows)
-                .build();
-    }
-
-    private InlineKeyboardMarkup buildMarkupForUsers(List<User> users, String callbackDataType){
-        List<InlineKeyboardRow> buttonRows = new ArrayList<>();
-        InlineKeyboardRow currentRow = new InlineKeyboardRow();
-
-        for (int i = 0; i < users.size(); i++) {
-            User user = users.get(i);
-            boolean isReady = gearService.isFullyEquipped(user.getTelegramId());
-
-            String text = "%s %s".formatted(user.getCallName(), isReady ? "✅" : "❌");
-            String callbackData = callbackDataType + user.getTelegramId();
-
-            InlineKeyboardButton toggleButton = InlineKeyboardButton.builder()
-                    .text(text)
-                    .callbackData(callbackData + user.getTelegramId())
-                    .build();
-
-            currentRow.add(toggleButton);
-
-            if(currentRow.size() == 2 || i == users.size() - 1) {
-                buttonRows.add(currentRow);
-                currentRow = new InlineKeyboardRow();
-            }
-        }
-        return InlineKeyboardMarkup.builder()
-                .keyboard(buttonRows)
-                .build();
     }
 }

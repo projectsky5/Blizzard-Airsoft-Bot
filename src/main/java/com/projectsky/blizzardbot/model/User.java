@@ -19,6 +19,8 @@ public class User {
 
     private String callName;
 
+    private boolean isAccumulatorCharged;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 

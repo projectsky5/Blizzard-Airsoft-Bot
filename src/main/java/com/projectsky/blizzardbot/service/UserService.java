@@ -1,6 +1,7 @@
 package com.projectsky.blizzardbot.service;
 
 import com.projectsky.blizzardbot.enums.Role;
+import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.model.User;
 import com.projectsky.blizzardbot.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -59,5 +60,19 @@ public class UserService {
 
     public Optional<User> findByCallName(String callName) {
         return userRepository.findByCallName(callName);
+    }
+
+    public boolean isAccCharged(Long telegramId) {
+        return userRepository.findById(telegramId)
+                .map(User::isAccumulatorCharged)
+                .orElse(false);
+    }
+
+    public void toggleChargeStatus(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setAccumulatorCharged(!user.isAccumulatorCharged());
+        userRepository.save(user);
     }
 }
