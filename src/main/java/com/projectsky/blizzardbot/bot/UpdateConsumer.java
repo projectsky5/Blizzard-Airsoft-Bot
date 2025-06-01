@@ -10,6 +10,7 @@ import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.service.UserServiceImpl;
 import com.projectsky.blizzardbot.util.BotResponses;
+import com.projectsky.blizzardbot.util.ButtonText;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -27,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
-    private final TelegramClient telegramClient;
     private final UserServiceImpl userService;
     private final GearService gearService;
     private final MessageService messageService;
@@ -35,12 +35,10 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
     private final Map<Long, UserState> userStates = new ConcurrentHashMap<>();
 
-    public UpdateConsumer(TelegramClient telegramClient,
-                          UserServiceImpl userService,
+    public UpdateConsumer(UserServiceImpl userService,
                           GearService gearService,
                           MessageService messageService,
                           MarkupService markupService) {
-        this.telegramClient = telegramClient;
         this.userService = userService;
         this.gearService = gearService;
         this.messageService = messageService;
@@ -66,7 +64,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
             } else if(!isRegistered && userStates.getOrDefault(userId, UserState.NONE) == UserState.ENTERING_CALLNAME) {
                 register(userId, message, chatId);
 
-            } else if ("/add_gear".equalsIgnoreCase(message) || "Добавить предмет".equalsIgnoreCase(message)) {
+            } else if ("/add_gear".equalsIgnoreCase(message) || ButtonText.ADD_GEAR.equalsIgnoreCase(message)) {
                 userStates.put(userId, UserState.ADDING_GEAR);
 
                 messageService.sendMessageWithCancelKeyboard(
@@ -77,7 +75,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
             } else if(userStates.getOrDefault(userId, UserState.NONE) == UserState.ADDING_GEAR) {
                 try {
-                    if("Назад".equals(message)) {
+                    if(ButtonText.CANCEL.equals(message)) {
 
                         messageService.sendMessageWithKeyboard(
                                 chatId,
@@ -108,7 +106,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                         BotResponses.GEAR_ADDED.formatted(message),
                         markupService.buildReplyKeyboardGearMode(userId)
                 );
-            } else if("/check_gear".equalsIgnoreCase(message) || "Мое снаряжение".equalsIgnoreCase(message)) {
+            } else if("/check_gear".equalsIgnoreCase(message) || ButtonText.MY_GEAR.equalsIgnoreCase(message)) {
                 sendGearMenu(userId, chatId);
 
                 messageService.sendMessageWithKeyboard(
@@ -117,10 +115,10 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                         markupService.buildReplyKeyboardGearMode(userId)
                 );
 
-            } else if("Посмотреть снаряжение".equalsIgnoreCase(message)) {
+            } else if(ButtonText.VIEW_GEAR.equalsIgnoreCase(message)) {
                 sendGearMenu(userId, chatId);
             }
-            else if ("Удалить предмет".equalsIgnoreCase(message)) {
+            else if (ButtonText.REMOVE_GEAR.equalsIgnoreCase(message)) {
                 userStates.put(userId, UserState.REMOVING_GEAR);
 
                 List<Gear> userGears = gearService.getUserGears(userId);
@@ -182,7 +180,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                         mainKeyboard
                 );
 
-            } else if("/team_status".equalsIgnoreCase(message) || "Сборы команды".equalsIgnoreCase(message)) {
+            } else if("/team_status".equalsIgnoreCase(message) || ButtonText.TEAM_STATUS.equalsIgnoreCase(message)) {
                 if (!userService.isCommander(userId) && !userService.isAdmin(userId)) {
                     messageService.sendMessageWithKeyboard(
                             chatId,
@@ -206,14 +204,14 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                         BotResponses.TEAM_STATUS,
                         markupService.buildMarkupForUsers(users, "show_gear_"));
 
-            } else if ("Назад".equalsIgnoreCase(message)) {
+            } else if (ButtonText.BACK.equalsIgnoreCase(message)) {
                 userStates.put(userId, UserState.NONE);
                 messageService.sendMessageWithKeyboard(
                         chatId,
                         BotResponses.BACK_TO_MAIN,
                         mainKeyboard
                 );
-            } else if(("/reminder_request".equalsIgnoreCase(message) || "Состояние аккумуляторов".equalsIgnoreCase(message))){
+            } else if(("/reminder_request".equalsIgnoreCase(message) || ButtonText.ACCUMULATOR_STATUS.equalsIgnoreCase(message))){
                 if (!userService.isCommander(userId) && !userService.isAdmin(userId)) {
                     messageService.sendMessageWithKeyboard(chatId,
                             BotResponses.COMMANDER_ONLY.formatted(message),

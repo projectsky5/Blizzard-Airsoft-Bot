@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
-    @Transactional
     User createUser(Long telegramId, String callName);
 
     boolean isAdmin(Long telegramId);
