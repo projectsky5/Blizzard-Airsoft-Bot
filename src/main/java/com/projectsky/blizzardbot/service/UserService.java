@@ -24,4 +24,6 @@ public interface UserService {
     void toggleChargeStatus(Long userId);
 
     void saveAll(List<User> users);
+
+    Optional<User> findById(Long userId);
 }
