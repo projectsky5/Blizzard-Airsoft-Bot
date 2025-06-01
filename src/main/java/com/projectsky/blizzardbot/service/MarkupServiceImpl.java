@@ -1,14 +1,13 @@
 package com.projectsky.blizzardbot.service;
 
+import com.projectsky.blizzardbot.factory.ButtonFactory;
 import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.model.User;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.util.ArrayList;
@@ -19,11 +18,14 @@ public class MarkupServiceImpl implements MarkupService {
 
     private final GearService gearService;
     private final UserServiceImpl userService;
+    private final ButtonFactory buttonFactory;
 
     public MarkupServiceImpl(GearService gearService,
-                             UserServiceImpl userService) {
+                             UserServiceImpl userService,
+                             ButtonFactory buttonFactory) {
         this.gearService = gearService;
         this.userService = userService;
+        this.buttonFactory = buttonFactory;
     }
 
     @Override
@@ -44,14 +46,7 @@ public class MarkupServiceImpl implements MarkupService {
 
     @NotNull
     private InlineKeyboardRow getInlineKeyboardButtons(List<Gear> userGears, String callbackDataType, List<InlineKeyboardRow> buttonRows, InlineKeyboardRow currentRow, int i, Gear gear, String text) {
-        String callbackData = callbackDataType + gear.getId();
-
-        InlineKeyboardButton toggleButton = InlineKeyboardButton.builder()
-                .text(text)
-                .callbackData(callbackData)
-                .build();
-
-        currentRow.add(toggleButton);
+        currentRow.add(buttonFactory.createToggleGearButton(gear, callbackDataType));
 
         if(currentRow.size() == 2 || i == userGears.size() - 1) {
             buttonRows.add(currentRow);
@@ -69,30 +64,17 @@ public class MarkupServiceImpl implements MarkupService {
             User user = users.get(i);
             boolean isReady = gearService.isFullyEquipped(user.getTelegramId());
 
-            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isReady);
+//            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isReady);
+            currentRow.add(buttonFactory.createUserStatusButton(user, callbackDataType, isReady));
+
+            if(currentRow.size() == 2 || i == users.size() - 1) {
+                buttonRows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
         }
         return InlineKeyboardMarkup.builder()
                 .keyboard(buttonRows)
                 .build();
-    }
-
-    @NotNull
-    private InlineKeyboardRow getInlineKeyboardButtons(List<User> users, String callbackDataType, List<InlineKeyboardRow> buttonRows, InlineKeyboardRow currentRow, int i, User user, boolean isReady) {
-        String text = "%s %s".formatted(user.getCallName(), isReady ? "✅" : "❌");
-        String callbackData = callbackDataType + user.getTelegramId();
-
-        InlineKeyboardButton toggleButton = InlineKeyboardButton.builder()
-                .text(text)
-                .callbackData(callbackData)
-                .build();
-
-        currentRow.add(toggleButton);
-
-        if(currentRow.size() == 2 || i == users.size() - 1) {
-            buttonRows.add(currentRow);
-            currentRow = new InlineKeyboardRow();
-        }
-        return currentRow;
     }
 
     @Override
@@ -104,7 +86,13 @@ public class MarkupServiceImpl implements MarkupService {
             User user = users.get(i);
             boolean isCharged = userService.isAccCharged(user.getTelegramId());
 
-            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isCharged);
+//            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isCharged);
+            currentRow.add(buttonFactory.createUserStatusButton(user, callbackDataType, isCharged));
+
+            if(currentRow.size() == 2 || i == users.size() - 1) {
+                buttonRows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
         }
         return InlineKeyboardMarkup.builder()
                 .keyboard(buttonRows)
@@ -113,25 +101,17 @@ public class MarkupServiceImpl implements MarkupService {
 
     @Override
     public ReplyKeyboardMarkup buildReplyKeyboardGearMode(Long userId) {
-        KeyboardButton back = new KeyboardButton("Назад");
-        KeyboardButton add = new KeyboardButton("Добавить предмет");
-        KeyboardButton remove = new KeyboardButton("Удалить предмет");
-        KeyboardButton gear = new KeyboardButton("Посмотреть снаряжение");
-
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(add);
-        row1.add(remove);
+        row1.add(buttonFactory.createAddGearButton());
+        row1.add(buttonFactory.createRemoveGearButton());
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(back);
+        row2.add(buttonFactory.createCancelButton());
 
         KeyboardRow row3 = new KeyboardRow();
-        row3.add(gear);
+        row3.add(buttonFactory.createViewGearButton());
 
-        List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(row1);
-        keyboard.add(row2);
-        keyboard.add(row3);
+        List<KeyboardRow> keyboard = List.of(row1, row2, row3);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
@@ -148,8 +128,15 @@ public class MarkupServiceImpl implements MarkupService {
         for (int i = 0; i < userGears.size(); i++) {
             Gear gear = userGears.get(i);
 
-            String text = "%s".formatted(gear.getItemName());
-            currentRow = getInlineKeyboardButtons(userGears, callbackDataType, buttonRows, currentRow, i, gear, text);
+//            String text = "%s".formatted(gear.getItemName());
+//            currentRow = getInlineKeyboardButtons(userGears, callbackDataType, buttonRows, currentRow, i, gear, text);
+
+            currentRow.add(buttonFactory.createDeleteGearButton(gear, callbackDataType));
+
+            if(currentRow.size() == 2 || i == userGears.size() - 1) {
+                buttonRows.add(currentRow);
+                currentRow = new InlineKeyboardRow();
+            }
         }
         return InlineKeyboardMarkup.builder()
                 .keyboard(buttonRows)
@@ -160,43 +147,52 @@ public class MarkupServiceImpl implements MarkupService {
     public InlineKeyboardMarkup buildMarkupForAgreement(Long telegramId, String callbackDataType) {
         boolean isCharged = userService.isAccCharged(telegramId);
 
-        String text = "%s".formatted(isCharged ? "✅" : "❌");
-        String callbackData = callbackDataType + telegramId;
+//        String text = "%s".formatted(isCharged ? "✅" : "❌");
+//        String callbackData = callbackDataType + telegramId;
 
-        InlineKeyboardButton button = InlineKeyboardButton.builder()
-                .text(text)
-                .callbackData(callbackData)
-                .build();
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(buttonFactory.createAgreementButton(telegramId, callbackDataType, isCharged));
 
-        List<InlineKeyboardRow> keyboardRows = List.of(new InlineKeyboardRow(List.of(button)));
+//        InlineKeyboardButton button = InlineKeyboardButton.builder()
+//                .text(text)
+//                .callbackData(callbackData)
+//                .build();
+//
+//        List<InlineKeyboardRow> keyboardRows = List.of(new InlineKeyboardRow(List.of(button)));
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(keyboardRows)
+                .keyboard(List.of(row))
                 .build();
     }
 
     @Override
     public ReplyKeyboardMarkup buildReplyKeyboardMarkup(Long userId) {
-        KeyboardButton checkItems = new KeyboardButton("Мое снаряжение");
-        KeyboardButton teamStatus = new KeyboardButton("Сборы команды");
-        KeyboardButton chargeStatus = new KeyboardButton("Состояние аккумуляторов");
+        return userService.isAdmin(userId) || userService.isCommander(userId)
+                ? buildCommanderKeyboard() : buildUserKeyboard();
+    }
 
-        List<KeyboardRow> keyboard = new ArrayList<>();
+    private ReplyKeyboardMarkup buildCommanderKeyboard(){
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(buttonFactory.createCheckMyGearButton());
 
-        if(userService.isCommander(userId) || userService.isAdmin(userId)){
-            KeyboardRow row1 = new KeyboardRow();
-            row1.add(checkItems);
-            keyboard.add(row1);
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add(buttonFactory.createTeamStatusButton());
+        row2.add(buttonFactory.createChargeStatusButton());
 
-            KeyboardRow row2 = new KeyboardRow();
-            row2.add(teamStatus);
-            row2.add(chargeStatus);
-            keyboard.add(row2);
-        } else {
-            KeyboardRow row = new KeyboardRow();
-            row.add(checkItems);
-            keyboard.add(row);
-        }
+        List<KeyboardRow> keyboard = List.of(row1, row2);
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(false)
+                .build();
+    }
+
+    private ReplyKeyboardMarkup buildUserKeyboard(){
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(buttonFactory.createCheckMyGearButton());
+
+        List<KeyboardRow> keyboard = List.of(row1);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
@@ -207,11 +203,10 @@ public class MarkupServiceImpl implements MarkupService {
 
     @Override
     public ReplyKeyboardMarkup buildReplyKeyboardCancelMarkup(Long userId) {
-        KeyboardButton cancel = new KeyboardButton("Назад");
+        KeyboardRow row = new KeyboardRow();
+        row.add(buttonFactory.createCancelButton());
 
-        KeyboardRow row = new KeyboardRow(cancel);
-        List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(row);
+        List<KeyboardRow> keyboard = List.of(row);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)

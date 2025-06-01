@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
-    @Transactional
     User createUser(Long telegramId, String callName);
 
     boolean isAdmin(Long telegramId);
@@ -25,4 +24,6 @@ public interface UserService {
     void toggleChargeStatus(Long userId);
 
     void saveAll(List<User> users);
+
+    Optional<User> findById(Long userId);
 }
