@@ -8,6 +8,7 @@ import com.projectsky.blizzardbot.service.UserService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.CallbackCommands;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -16,6 +17,7 @@ import java.util.List;
 
 @Component("viewGearCallbackHandler")
 @RequiredArgsConstructor
+@Slf4j
 public class ViewGearHandler implements CallbackQueryHandler{
 
     private final GearService gearService;
@@ -44,6 +46,7 @@ public class ViewGearHandler implements CallbackQueryHandler{
                     BotResponses.NO_PERMISSION_VIEW_GEAR,
                     keyboard
             );
+            log.warn("User: [{}] tried to check other's user gear without access", callbackQuery.getFrom().getUserName());
             return;
         }
 

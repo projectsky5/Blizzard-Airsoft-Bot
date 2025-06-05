@@ -5,6 +5,7 @@ import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.service.UserService;
 import com.projectsky.blizzardbot.util.BotResponses;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -13,6 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class RegisterInputHandler implements BotCommandHandler{
 
     private final UserService userService;
@@ -32,7 +34,10 @@ public class RegisterInputHandler implements BotCommandHandler{
 
     @Override
     public boolean supports(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) return false;
+        if (!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), RegisterInputHandler.class.getSimpleName());
+            return false;
+        }
 
         Long userId = update.getMessage().getFrom().getId();
         boolean isUnregistered = userService.findById(userId).isEmpty();

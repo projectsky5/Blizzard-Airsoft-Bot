@@ -7,6 +7,7 @@ import com.projectsky.blizzardbot.service.UserService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.ButtonText;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class AccumulatorStatusCommandHandler implements BotCommandHandler {
 
     private final UserService userService;
@@ -23,7 +25,10 @@ public class AccumulatorStatusCommandHandler implements BotCommandHandler {
 
     @Override
     public boolean supports(Update update) {
-        if(!update.hasMessage() || !update.getMessage().hasText()) return false;
+        if(!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), AccumulatorStatusCommandHandler.class.getSimpleName());
+            return false;
+        }
 
         String message = update.getMessage().getText();
         return "/reminder_request".equalsIgnoreCase(message) ||

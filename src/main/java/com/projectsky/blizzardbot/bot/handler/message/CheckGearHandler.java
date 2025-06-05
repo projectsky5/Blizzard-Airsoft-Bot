@@ -7,6 +7,7 @@ import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.ButtonText;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-        // И ЭТОТ
+@Slf4j
 public class CheckGearHandler implements BotCommandHandler{
 
     private final GearService gearService;
@@ -37,8 +38,10 @@ public class CheckGearHandler implements BotCommandHandler{
 
     @Override
     public boolean supports(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) return false;
-
+        if (!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), CheckGearHandler.class.getSimpleName());
+            return false;
+        }
         String message = update.getMessage().getText();
         return "/check_gear".equalsIgnoreCase(message) || ButtonText.MY_GEAR.equalsIgnoreCase(message);
     }

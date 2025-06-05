@@ -25,4 +25,5 @@ public class BotResponses {
     public static final String TEAM_STATUS = "Готовность команды:";
     public static final String BATTERY_STATUS = "Состояние аккумуляторов:";
     public static final String CANCEL_ADD = "Добавление отменено";
+    public static final String CHARGE_ACCUMULATOR = "Поставь аккумулятор на зарядку";
 }
