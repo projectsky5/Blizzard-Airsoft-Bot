@@ -1,8 +1,6 @@
 package com.projectsky.blizzardbot.bot;
 
 import com.projectsky.blizzardbot.bot.handler.callback.CallbackQueryHandler;
-import com.projectsky.blizzardbot.bot.handler.message.AddGearCommandHandler;
-import com.projectsky.blizzardbot.bot.handler.message.AddGearInputHandler;
 import com.projectsky.blizzardbot.bot.handler.message.BotCommandHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -14,6 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import java.util.*;
 
 @Component
+@Slf4j
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
     private final List<BotCommandHandler> handlers;
@@ -27,10 +26,12 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
     @Override
     public void consume(Update update) {
+        String username = update.getMessage().getFrom().getUserName();
         if (update.hasMessage() && update.getMessage().hasText()) {
             for (BotCommandHandler handler : handlers) {
                 if(handler.supports(update)) {
                     handler.handle(update);
+                    log.info("Handled method: [{}] for user: [{}]", handler.getClass().getSimpleName(), username);
                     return;
                 }
             }
@@ -43,6 +44,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
             for (String prefix : queryHandlers.keySet()) {
                 if(data.startsWith(prefix)) {
                     queryHandlers.get(prefix).handle(callbackQuery);
+                    log.info("Handled callbackQuery: [{}] for user: [{}]", queryHandlers.get(prefix).getClass().getSimpleName(), username);
                     return;
                 }
             }

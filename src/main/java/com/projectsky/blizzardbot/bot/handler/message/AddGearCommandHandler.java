@@ -5,6 +5,7 @@ import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.ButtonText;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -13,6 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class AddGearCommandHandler implements BotCommandHandler {
 
     private final MessageService messageService;
@@ -29,7 +31,10 @@ public class AddGearCommandHandler implements BotCommandHandler {
 
     @Override
     public boolean supports(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) return false;
+        if (!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), AddGearCommandHandler.class.getSimpleName());
+            return false;
+        }
 
         String message = update.getMessage().getText();
 

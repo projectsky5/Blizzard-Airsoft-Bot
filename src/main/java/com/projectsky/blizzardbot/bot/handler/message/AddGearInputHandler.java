@@ -40,7 +40,10 @@ public class AddGearInputHandler implements BotCommandHandler {
 
     @Override
     public boolean supports(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) return false;
+        if (!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), AddGearInputHandler.class.getSimpleName());
+            return false;
+        }
 
         Long userId = update.getMessage().getFrom().getId();
         return userStates.getOrDefault(userId, UserState.NONE) == UserState.ADDING_GEAR;
@@ -85,23 +88,16 @@ public class AddGearInputHandler implements BotCommandHandler {
             );
 
             userStates.put(userId, UserState.ADDING_GEAR);
+            log.info("item:[{}] saved for [{}]", text, message.getFrom().getUserName());
 
         } catch (GearAlreadyExistsException e) {
             //Уведомление о том что предмет уже существует
+            log.warn("item: [{}] is already exists for [{}]", text, message.getFrom().getUserName());
             messageService.sendMessageWithKeyboard(
                     chatId,
                     BotResponses.GEAR_EXISTS,
                     mainKeyboard
             );
         }
-
-        // Уведомление о успешном добавлении
-//        userStates.put(userId, UserState.GEAR_MODE);
-//        List<Gear> userGears = gearService.getUserGears(userId);
-//        messageService.sendMessageWithInlineKeyboard(
-//                chatId,
-//                BotResponses.GEAR_ADDED.formatted(text),
-//                markupService.buildMarkupForGear(userGears, CallbackCommands.TOGGLE_GEAR)
-//        );
     }
 }

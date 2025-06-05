@@ -6,6 +6,7 @@ import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.util.CallbackCommands;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ToggleGearHandler implements CallbackQueryHandler {
 
     private final GearService gearService;
@@ -40,5 +42,6 @@ public class ToggleGearHandler implements CallbackQueryHandler {
                 messageId,
                 markupService.buildMarkupForGear(userGears, CallbackCommands.TOGGLE_GEAR)
         );
+        log.info("User: [{}] toggled gear status", userId);
     }
 }

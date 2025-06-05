@@ -7,12 +7,14 @@ import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.service.UserService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class SetCommanderCommandHandler implements BotCommandHandler {
 
     private final UserService userService;
@@ -21,7 +23,10 @@ public class SetCommanderCommandHandler implements BotCommandHandler {
 
     @Override
     public boolean supports(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) return false;
+        if (!update.hasMessage() || !update.getMessage().hasText()){
+            log.warn("Has no message for user: [{}] in [{}]", update.getMessage().getFrom().getUserName(), SetCommanderCommandHandler.class.getSimpleName());
+            return false;
+        }
 
         String message = update.getMessage().getText();
         return message.startsWith("/set_commander");
@@ -40,6 +45,7 @@ public class SetCommanderCommandHandler implements BotCommandHandler {
                     BotResponses.NO_ACCESS,
                     markupService.buildReplyKeyboardMarkup(userId)
             );
+            log.warn("User [{}] has no permission to set the commander", message.getFrom().getUserName());
             return;
         }
 
@@ -50,6 +56,7 @@ public class SetCommanderCommandHandler implements BotCommandHandler {
                     BotResponses.INVALID_COMMAND,
                     markupService.buildReplyKeyboardMarkup(userId)
             );
+            log.warn("User: [{}] used invalid command: [{}]", message.getFrom().getUserName(), text);
             return;
         }
 

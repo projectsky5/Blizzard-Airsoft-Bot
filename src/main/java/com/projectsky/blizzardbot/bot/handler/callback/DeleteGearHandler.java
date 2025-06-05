@@ -7,6 +7,7 @@ import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.CallbackCommands;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DeleteGearHandler implements CallbackQueryHandler {
 
     private final GearService gearService;
@@ -50,5 +52,6 @@ public class DeleteGearHandler implements CallbackQueryHandler {
                 messageId,
                 markupService.buildMarkupForGearDeletion(userGears, CallbackCommands.DELETE_GEAR)
         );
+        log.info("User: [{}] deleted item", callbackQuery.getFrom().getUserName());
     }
 }
