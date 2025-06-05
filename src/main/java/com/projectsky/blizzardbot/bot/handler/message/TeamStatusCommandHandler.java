@@ -45,7 +45,7 @@ public class TeamStatusCommandHandler implements BotCommandHandler {
             return;
         }
 
-        List<User> users = userService.getAllVisibleUsers();
+        List<User> users = userService.findAllWithGears();
 
         if(users.isEmpty()){
             messageService.sendMessageWithKeyboard(

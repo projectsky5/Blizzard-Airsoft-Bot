@@ -64,7 +64,6 @@ public class MarkupServiceImpl implements MarkupService {
             User user = users.get(i);
             boolean isReady = gearService.isFullyEquipped(user.getTelegramId());
 
-//            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isReady);
             currentRow.add(buttonFactory.createUserStatusButton(user, callbackDataType, isReady));
 
             if(currentRow.size() == 2 || i == users.size() - 1) {
@@ -86,7 +85,6 @@ public class MarkupServiceImpl implements MarkupService {
             User user = users.get(i);
             boolean isCharged = userService.isAccCharged(user.getTelegramId());
 
-//            currentRow = getInlineKeyboardButtons(users, callbackDataType, buttonRows, currentRow, i, user, isCharged);
             currentRow.add(buttonFactory.createUserStatusButton(user, callbackDataType, isCharged));
 
             if(currentRow.size() == 2 || i == users.size() - 1) {
@@ -128,9 +126,6 @@ public class MarkupServiceImpl implements MarkupService {
         for (int i = 0; i < userGears.size(); i++) {
             Gear gear = userGears.get(i);
 
-//            String text = "%s".formatted(gear.getItemName());
-//            currentRow = getInlineKeyboardButtons(userGears, callbackDataType, buttonRows, currentRow, i, gear, text);
-
             currentRow.add(buttonFactory.createDeleteGearButton(gear, callbackDataType));
 
             if(currentRow.size() == 2 || i == userGears.size() - 1) {
@@ -147,18 +142,8 @@ public class MarkupServiceImpl implements MarkupService {
     public InlineKeyboardMarkup buildMarkupForAgreement(Long telegramId, String callbackDataType) {
         boolean isCharged = userService.isAccCharged(telegramId);
 
-//        String text = "%s".formatted(isCharged ? "✅" : "❌");
-//        String callbackData = callbackDataType + telegramId;
-
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(buttonFactory.createAgreementButton(telegramId, callbackDataType, isCharged));
-
-//        InlineKeyboardButton button = InlineKeyboardButton.builder()
-//                .text(text)
-//                .callbackData(callbackData)
-//                .build();
-//
-//        List<InlineKeyboardRow> keyboardRows = List.of(new InlineKeyboardRow(List.of(button)));
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row))

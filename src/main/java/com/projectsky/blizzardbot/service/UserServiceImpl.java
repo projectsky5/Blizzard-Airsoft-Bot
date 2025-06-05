@@ -23,6 +23,11 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(telegramId);
     }
 
+    @Override
+    public List<User> findAllWithGears() {
+        return userRepository.findAllWithGears();
+    }
+
     @Transactional
     @Override
     public User createUser(Long telegramId, String callName){

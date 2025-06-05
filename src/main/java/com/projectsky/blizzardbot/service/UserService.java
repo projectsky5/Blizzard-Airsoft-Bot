@@ -26,4 +26,6 @@ public interface UserService {
     void saveAll(List<User> users);
 
     Optional<User> findById(Long userId);
+
+    List<User> findAllWithGears();
 }

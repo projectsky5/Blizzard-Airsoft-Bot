@@ -2,20 +2,25 @@ package com.projectsky.blizzardbot.bot.handler.message;
 
 import com.projectsky.blizzardbot.enums.UserState;
 import com.projectsky.blizzardbot.exception.GearAlreadyExistsException;
+import com.projectsky.blizzardbot.model.Gear;
 import com.projectsky.blizzardbot.service.GearService;
 import com.projectsky.blizzardbot.service.MarkupService;
 import com.projectsky.blizzardbot.service.MessageService;
 import com.projectsky.blizzardbot.util.BotResponses;
 import com.projectsky.blizzardbot.util.ButtonText;
+import com.projectsky.blizzardbot.util.CallbackCommands;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 
+import java.util.List;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class AddGearInputHandler implements BotCommandHandler {
 
     private final MessageService messageService;
@@ -64,23 +69,39 @@ public class AddGearInputHandler implements BotCommandHandler {
         // Добавление снаряжения
         try {
             gearService.addGear(userId, text);
+
+            List<Gear> userGears = gearService.getUserGears(userId);
+
+            messageService.sendMessageWithInlineKeyboard(
+                    chatId,
+                    BotResponses.GEAR_ADDED.formatted(text),
+                    markupService.buildMarkupForGear(userGears, CallbackCommands.TOGGLE_GEAR)
+            );
+
+            messageService.sendMessageWithKeyboard(
+                    chatId,
+                    "Введите следующий предмет или нажмите «Назад».",
+                    markupService.buildReplyKeyboardCancelMarkup(userId)
+            );
+
+            userStates.put(userId, UserState.ADDING_GEAR);
+
         } catch (GearAlreadyExistsException e) {
             //Уведомление о том что предмет уже существует
-            userStates.put(userId, UserState.NONE);
             messageService.sendMessageWithKeyboard(
                     chatId,
                     BotResponses.GEAR_EXISTS,
                     mainKeyboard
             );
-            return;
         }
 
         // Уведомление о успешном добавлении
-        userStates.put(userId, UserState.GEAR_MODE);
-        messageService.sendMessageWithKeyboard(
-                chatId,
-                BotResponses.GEAR_ADDED.formatted(text),
-                markupService.buildReplyKeyboardGearMode(userId)
-        );
+//        userStates.put(userId, UserState.GEAR_MODE);
+//        List<Gear> userGears = gearService.getUserGears(userId);
+//        messageService.sendMessageWithInlineKeyboard(
+//                chatId,
+//                BotResponses.GEAR_ADDED.formatted(text),
+//                markupService.buildMarkupForGear(userGears, CallbackCommands.TOGGLE_GEAR)
+//        );
     }
 }

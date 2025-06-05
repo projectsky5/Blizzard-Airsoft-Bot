@@ -1,7 +1,10 @@
 package com.projectsky.blizzardbot.bot;
 
 import com.projectsky.blizzardbot.bot.handler.callback.CallbackQueryHandler;
+import com.projectsky.blizzardbot.bot.handler.message.AddGearCommandHandler;
+import com.projectsky.blizzardbot.bot.handler.message.AddGearInputHandler;
 import com.projectsky.blizzardbot.bot.handler.message.BotCommandHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;

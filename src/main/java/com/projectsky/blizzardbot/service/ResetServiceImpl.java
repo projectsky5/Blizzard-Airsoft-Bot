@@ -10,10 +10,10 @@ import java.util.List;
 @Service
 public class ResetServiceImpl implements ResetService {
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
     private final GearService gearService;
 
-    public ResetServiceImpl(UserServiceImpl userService, GearService gearService) {
+    public ResetServiceImpl(UserService userService, GearService gearService) {
         this.userService = userService;
         this.gearService = gearService;
     }
@@ -23,10 +23,12 @@ public class ResetServiceImpl implements ResetService {
     @Transactional
     public void resetWeeklyStates() {
         List<User> users = userService.getAllVisibleUsers();
-        for (User user : users) {
-            user.setAccumulatorCharged(false);
+        if(!users.isEmpty()) {
+            for (User user : users) {
+                user.setAccumulatorCharged(false);
+            }
+            userService.saveAll(users);
         }
-        userService.saveAll(users);
 
         gearService.resetAllGearReadiness();
     }

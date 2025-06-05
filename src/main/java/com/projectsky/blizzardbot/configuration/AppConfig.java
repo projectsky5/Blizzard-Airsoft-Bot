@@ -6,8 +6,10 @@ import com.projectsky.blizzardbot.enums.UserState;
 import com.projectsky.blizzardbot.util.CallbackCommands;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +26,6 @@ public class AppConfig {
 
     @Bean(name = "FSM")
     public Map<Long, UserState> userStates() {
-        return new ConcurrentHashMap<>();
+        return new HashMap<>();
     }
 }

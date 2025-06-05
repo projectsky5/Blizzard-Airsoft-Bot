@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GearServiceImpl implements GearService {
@@ -61,10 +62,20 @@ public class GearServiceImpl implements GearService {
     @Override
     @Transactional
     public void removeGear(Long telegramId, Long gearId) {
-        gearRepository.deleteByUserTelegramId_AndId(telegramId, gearId);
+        if(telegramId == null || gearId == null) {
+            throw new IllegalArgumentException("TelegramId and gearId must not be null");
+        }
+
+        Optional<Gear> optGear = gearRepository.findByUserTelegramIdAndId(telegramId, gearId);
+        if (optGear.isPresent()) {
+            gearRepository.delete(optGear.get());
+        } else {
+            throw new RuntimeException("Gear not found");
+        }
     }
 
     @Override
+    @Transactional
     public void resetAllGearReadiness() {
         List<Gear> gears = gearRepository.findAll();
         gears.forEach(gear -> gear.setReady(false));

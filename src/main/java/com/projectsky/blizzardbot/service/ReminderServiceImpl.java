@@ -2,6 +2,8 @@ package com.projectsky.blizzardbot.service;
 
 import com.google.common.util.concurrent.RateLimiter;
 import com.projectsky.blizzardbot.model.User;
+import com.projectsky.blizzardbot.util.BotResponses;
+import com.projectsky.blizzardbot.util.CallbackCommands;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -18,16 +20,20 @@ public class ReminderServiceImpl implements ReminderService {
     private final ExecutorService executor;
     private final UserServiceImpl userService;
     private final TelegramClient telegramClient;
+    private final MessageService messageService;
     private final MarkupService markupService;
 
     public ReminderServiceImpl(
             @Qualifier("reminderExecutor") ExecutorService executor,
             UserServiceImpl userService,
-            TelegramClient telegramClient, MarkupService markupService) {
+            TelegramClient telegramClient,
+            MarkupService markupService,
+            MessageService messageService) {
         this.executor = executor;
         this.userService = userService;
         this.telegramClient = telegramClient;
         this.markupService = markupService;
+        this.messageService = messageService;
     }
 
     @Override
@@ -40,17 +46,11 @@ public class ReminderServiceImpl implements ReminderService {
             executor.submit(() -> {
                 limiter.acquire();
 
-                InlineKeyboardMarkup markup = markupService.buildMarkupForAgreement(user.getTelegramId(), "reminder_response_");
-
-                try {
-                    telegramClient.execute(SendMessage.builder()
-                                    .chatId(user.getTelegramId())
-                                    .text("Поставь аккумулятор на зарядку")
-                                    .replyMarkup(markup)
-                            .build());
-                } catch (TelegramApiException e) {
-                    throw new RuntimeException(e);
-                }
+                messageService.sendMessageWithInlineKeyboard(
+                        user.getTelegramId(),
+                        BotResponses.CHARGE_ACCUMULATOR,
+                        markupService.buildMarkupForAgreement(user.getTelegramId(), CallbackCommands.TOGGLE_CHARGE)
+                );
             });
         }
     }
